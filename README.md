@@ -2,6 +2,19 @@
 
 Projeto de visao computacional para classificacao de tampas via webcam.
 
+## Arquitetura
+
+- Documento completo: [docs/arquitetura.md](docs/arquitetura.md)
+- Diagrama Mermaid: [docs/arquitetura.mermaid](docs/arquitetura.mermaid)
+
+![Diagrama de Arquitetura](docs/arquitetura.png)
+
+Resumo arquitetural:
+- Inferencia local com Teachable Machine no desktop (Python + OpenCV + TensorFlow).
+- Orquestracao por regras de negocio (threshold + handshake anti-repeticao).
+- Integracao assincrona orientada a eventos via MQTT (Mosquitto).
+- Atuacao fisica no edge (ESP32), com confirmacao de `servico completo` para liberar novo ciclo.
+
 O fluxo atual funciona assim:
 1. O script Python (`teachable.py`) classifica cada frame com um modelo Keras exportado do Teachable Machine.
 2. Quando a confianca passa de 80%, ele publica o evento no MQTT em `linha_producao/alertas`.
@@ -17,6 +30,10 @@ Tensorflow/
 |-- labels.txt
 |-- requirements.txt
 |-- docker-compose.yml
+|-- docs/
+|   |-- arquitetura.md
+|   |-- arquitetura.mermaid
+|   `-- arquitetura.png
 |-- assets/
 |   |-- converted_keras/
 |   |   |-- keras_model.h5
@@ -32,6 +49,11 @@ Arquivos realmente usados na execucao do Python:
 - `teachable.py`
 - `keras_model.h5` (na raiz)
 - `labels.txt` (na raiz)
+
+Arquivos de documentacao de arquitetura:
+- `docs/arquitetura.md`
+- `docs/arquitetura.mermaid`
+- `docs/arquitetura.png`
 
 ## Requisitos
 

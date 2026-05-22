@@ -1,0 +1,34 @@
+graph TD
+  %% Camada de Cliente
+  subgraph CLIENTE["Camada de Cliente"]
+    C1["Desktop Operador 
+    (Python / OpenCV)"]
+  end
+
+  %% Microsserviços / Componentes de Negócio
+  subgraph SERVICOS["Microsserviços / Componentes"]
+    S1["Serviço de Visão
+    (Teachable Machine Inference)
+    - captura webcam
+    - classifica tampa"]
+    S2["Serviço de Orquestração de Inspeção
+    - threshold >= 80%
+    - anti-repetição / handshake"]
+    S3["Broker MQTT (Mosquitto)
+    Event-Driven"]
+    S4["Serviço Edge de Atuadores (ESP32)
+    - aciona GPIO
+    - confirma 'servico completo'"]
+  end
+
+  %% Fluxos síncronos
+  C1 -->|"Síncrono (local camera stream)"| S1
+
+  %% Fluxos assíncronos (mensageria)
+  S1 -->|"Síncrono (chamada interna)"| S2
+  S2 -->|"Assíncrono MQTT publish
+  linha_producao/alertas"| S3
+  S3 -->|"Assíncrono MQTT subscribe"| S4
+  S4 -->|"Assíncrono MQTT publish
+  linha_producao/status"| S3
+  S3 -->|"Assíncrono MQTT consume"| S2
