@@ -1,0 +1,9 @@
+# Dependências do projeto (mqtt_HofferPLC.ino)
+# Arduino IDE 2.3.8 recomendado no Windows
+#
+# Instalação:
+#
+# ESP32 Wrover Module
+
+esp32==3.3.8 by Espressif Systems
+PubSubClient==2.8.0 by Nick O'Leary

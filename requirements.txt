@@ -1,0 +1,16 @@
+# Dependências do projeto (teachable.py)
+# Python 3.12+ recomendado no Windows
+#
+# Instalação:
+#   python -m venv .venv
+#   .venv\Scripts\activate
+#   pip install -r requirements.txt
+#
+# MQTT (Mosquitto) via Docker:
+#   docker compose up -d
+
+opencv-python==4.13.0.92
+numpy==2.0.2
+paho-mqtt==1.6.1
+tensorflow==2.18.1
+tf-keras==2.18.0
