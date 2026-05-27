@@ -1,5 +1,5 @@
 /*
- * ESP32 — aciona saídas digitais conforme classificação MQTT do teachable.py
+ * ESP32 — controla direção do Motor A (L298N) conforme classificação MQTT do teachable.py
  *
  * Mensagens no tópico (exemplo):
  *   "Tampa verde detectada | Verde | confiança: 0.92"
@@ -9,9 +9,9 @@
  *   - Placa: ESP32 Dev Module
  *   - Biblioteca: PubSubClient (Nick O'Leary)
  *
- * Ligações sugeridas (ajuste os pinos se necessário):
- *   GPIO 25 -> relé / LED / atuador da classificação VERDE
- *   GPIO 26 -> relé / LED / atuador da classificação VERMELHO
+ * Ligações sugeridas (Motor A no L298N):
+ *   GPIO 4  -> IN1 (sentido direita)
+ *   GPIO 16 -> IN2 (sentido esquerda)
  *
  * Após 5 s com a saída ativa, publica em linha_producao/status: "servico completo"
  */
@@ -19,28 +19,28 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-// --- Wi-Fi (mesma rede do PC com Mosquitto) ---
-const char* WIFI_SSID     = "Nome do seu WIFI";
-const char* WIFI_PASSWORD = "Senha";
+// --- Wi-Fi: hotspot Windows (Configurações → Hotspot móvel) ---
+const char* WIFI_SSID     = "IOT2026";
+const char* WIFI_PASSWORD = "!Eps32-2026!";
 
-// IP do PC onde corre "docker compose up" (não use "localhost" no ESP32)
-const char* MQTT_SERVER = "192.168.0.27";
+// Gateway padrão do hotspot Windows (192.168.137.0/24). Não use "localhost" no ESP32.
+const char* MQTT_SERVER = "192.168.137.1";
 const uint16_t MQTT_PORT = 1883;
 const char* MQTT_TOPIC        = "linha_producao/alertas";   // subscreve (teachable.py)
 const char* MQTT_TOPIC_STATUS = "linha_producao/status";    // publica ao terminar
 const char* MQTT_CLIENT_ID    = "esp32_linha_producao";
 const char* MSG_SERVICO_COMPLETO = "servico completo";
 
-// --- Saídas digitais ---
-const uint8_t PIN_VERDE    = 4;
-const uint8_t PIN_VERMELHO = 16;
+// --- Controle do Motor A (L298N) ---
+const uint8_t IN1 = 4;
+const uint8_t IN2 = 16;
 const unsigned long SAIDA_MS = 5000;  // tempo com saída em HIGH
 
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 
-unsigned long verdeAteMs    = 0;
-unsigned long vermelhoAteMs = 0;
+unsigned long direitaAteMs  = 0;
+unsigned long esquerdaAteMs = 0;
 
 void conectarWiFi() {
   Serial.print("Wi-Fi: ");
@@ -82,20 +82,20 @@ bool contem(const char* texto, const char* trecho) {
   return strstr(texto, trecho) != nullptr;
 }
 
-void acionarVerde() {
-  digitalWrite(PIN_VERDE, HIGH);
-  digitalWrite(PIN_VERMELHO, LOW);
-  verdeAteMs = millis() + SAIDA_MS;
-  vermelhoAteMs = 0;
-  Serial.println("Saida VERDE (GPIO 25) ON por 5 s");
+void sentidoDireita() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  direitaAteMs = millis() + SAIDA_MS;
+  esquerdaAteMs = 0;
+  Serial.println("Motor A: sentido DIREITA por 5 s (IN1=HIGH, IN2=LOW)");
 }
 
-void acionarVermelho() {
-  digitalWrite(PIN_VERMELHO, HIGH);
-  digitalWrite(PIN_VERDE, LOW);
-  vermelhoAteMs = millis() + SAIDA_MS;
-  verdeAteMs = 0;
-  Serial.println("Saida VERMELHO (GPIO 26) ON por 5 s");
+void sentidoEsquerda() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  esquerdaAteMs = millis() + SAIDA_MS;
+  direitaAteMs = 0;
+  Serial.println("Motor A: sentido ESQUERDA por 5 s (IN1=LOW, IN2=HIGH)");
 }
 
 void onMqttMessage(char* topic, byte* payload, unsigned int length) {
@@ -113,11 +113,11 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 
   // Ordem: classificação explícita no payload (| Verde | ou | Vermelho |)
   if (contem(msg, "| Verde |") || contem(msg, "Tampa verde")) {
-    acionarVerde();
+    sentidoDireita();
     return;
   }
   if (contem(msg, "| Vermelho |") || contem(msg, "Tampa vermelha")) {
-    acionarVermelho();
+    sentidoEsquerda();
     return;
   }
 
@@ -136,29 +136,33 @@ void enviarServicoCompleto() {
   }
 }
 
+void pararMotor() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+}
+
 void atualizarSaidas() {
   unsigned long agora = millis();
 
-  if (verdeAteMs != 0 && agora >= verdeAteMs) {
-    digitalWrite(PIN_VERDE, LOW);
-    verdeAteMs = 0;
-    Serial.println("Saida VERDE OFF");
+  if (direitaAteMs != 0 && agora >= direitaAteMs) {
+    pararMotor();
+    direitaAteMs = 0;
+    Serial.println("Motor A: parada apos sentido DIREITA");
     enviarServicoCompleto();
   }
-  if (vermelhoAteMs != 0 && agora >= vermelhoAteMs) {
-    digitalWrite(PIN_VERMELHO, LOW);
-    vermelhoAteMs = 0;
-    Serial.println("Saida VERMELHO OFF");
+  if (esquerdaAteMs != 0 && agora >= esquerdaAteMs) {
+    pararMotor();
+    esquerdaAteMs = 0;
+    Serial.println("Motor A: parada apos sentido ESQUERDA");
     enviarServicoCompleto();
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  pinMode(PIN_VERDE, OUTPUT);
-  pinMode(PIN_VERMELHO, OUTPUT);
-  digitalWrite(PIN_VERDE, LOW);
-  digitalWrite(PIN_VERMELHO, LOW);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pararMotor();
 
   conectarWiFi();
   conectarMQTT();
