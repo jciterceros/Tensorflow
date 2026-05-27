@@ -115,15 +115,19 @@ Broker exposto em `localhost:1883`.
 python teachable.py
 ```
 
-### 4) Gravar ESP32
+### 4) Hotspot Windows + ESP32
 
-No arquivo `mqtt_HofferPLC/mqtt_HofferPLC.ino`, ajuste:
-- `WIFI_SSID`
-- `WIFI_PASSWORD`
-- `MQTT_SERVER` (IP do PC onde o Mosquitto esta rodando)
+1. Ative o hotspot em **Configuracoes → Rede e Internet → Hotspot movel**:
+   - SSID: `IOT2026`
+   - Senha: `!Eps32-2026!`
+2. O Windows usa por padrao a rede `192.168.137.0/24`; o PC (gateway) fica em **`192.168.137.1`**.
+3. Grave o ESP32 com `mqtt_HofferPLC/mqtt_HofferPLC.ino` (ja configurado para essa rede e IP).
+4. Confirme no PC com `ipconfig` que o adaptador do hotspot mostra `192.168.137.1`.
 
 Importante:
-- No ESP32, nao use `localhost`. Use o IP real da maquina (ex.: `192.168.0.27`).
+- No ESP32, nao use `localhost`. Use o gateway do hotspot: `192.168.137.1`.
+- O `teachable.py` no PC continua com `MQTT_BROKER=localhost` (Docker mapeia `1883` no host).
+- Se o `ipconfig` mostrar outro IP no hotspot, ajuste `MQTT_SERVER` no `.ino` para esse valor.
 
 Bibliotecas/placa sugeridas em `mqtt_HofferPLC/requirements.txt`:
 - ESP32 by Espressif Systems
@@ -180,7 +184,7 @@ O `teachable.py` le as seguintes variaveis:
 Exemplo de execucao customizada:
 
 ```powershell
-$env:MQTT_BROKER="192.168.0.27"
+$env:MQTT_BROKER="192.168.137.1"
 $env:MQTT_PORT="1883"
 $env:MQTT_TOPIC="linha_producao/alertas"
 $env:MQTT_TOPIC_STATUS="linha_producao/status"
